@@ -1,0 +1,146 @@
+---
+title: "Peer-graded Assignment: Course Project 1 - Reproducible Research"
+author: "Karnam Vasudeva Rao"
+date: "4/21/2020"
+output: html_document
+---
+
+
+
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+library(knitr)
+library(ggplot2)
+```
+
+
+## 1. Read activity data
+```{r, warning=FALSE, message=FALSE}
+# Read activity data
+activity_data <- read.csv("~/activity.csv", stringsAsFactors = F, header = T)
+
+# Assign date class to date column
+activity_data$date <- as.Date(activity_data$date)
+
+```
+
+## 1. Explore data
+```{r, warning=FALSE, message=FALSE}
+# Check dimensions
+dim(activity_data)
+summary(activity_data)
+knitr::kable(activity_data[1:10,])
+```
+
+
+## 2. Histogram of the total number of steps taken each day
+```{r, warning=FALSE, message=FALSE}
+
+# Remove rows with missing data
+activity_data_noNA <- na.omit(activity_data)
+
+activity_data_noNA$steps <-  as.numeric(activity_data_noNA$steps)
+
+# Group data by date and find total steps per day.
+activity_sum_steps <- 
+  activity_data_noNA %>%
+  group_by(date) %>%
+  summarize(total_steps = sum(steps, na.rm = T))
+
+
+# plot histogram
+hist(activity_sum_steps$total_steps, main="Total number of steps taken each day", 
+     xlab="Total steps per day", col = 'dark blue')
+
+```
+
+
+## 3. Mean and median number of steps taken each day
+```{r, warning=FALSE, message=FALSE}
+median(activity_sum_steps$total_steps)
+mean(activity_sum_steps$total_steps)
+```
+
+## 4. Time series plot of the average number of steps taken
+
+```{r, warning=FALSE, message=FALSE}
+
+# Group data by interval and find average steps per day.
+activity_mean_steps <- 
+  activity_data_noNA %>%
+  group_by(interval) %>%
+  summarize(total_steps = mean(steps, na.rm = TRUE))
+
+# Plot time series plot of the average number of steps taken
+ggplot(aes(x=interval,y=total_steps),data=activity_mean_steps)+geom_line(color = "orange", size = 1.0) +
+   ggtitle("The average number of steps by interval") 
+
+```
+
+
+## 5. The 5-minute interval that, on average, contains the maximum number of steps
+
+```{r, warning=FALSE, message=FALSE}
+
+# Find maximum average 5 min interval
+activity_mean_steps[activity_mean_steps$total_steps == max(activity_mean_steps$total_steps),1]
+
+```
+
+
+## 6. Code to describe and show a strategy for imputing missing data
+```{r, warning=FALSE, message=FALSE}
+
+# Check missing values in all the three columns (as there are only three columns)
+sum(is.na(activity_data$steps))
+sum(is.na(activity_data$date))
+sum(is.na(activity_data$interval))
+
+# Data is missing in 2304 rows in steps column
+
+# Fill missing rows with column mean value
+activity_data$steps[is.na(activity_data$steps)] <- mean(activity_data$steps,na.rm=TRUE)
+
+```
+
+
+## 7. Histogram of the total number of steps taken each day after missing values are imputed
+```{r, warning=FALSE, message=FALSE}
+
+# Find total number of steps taken per day after imputing
+activity_sum_steps_imputed <- 
+  activity_data %>%
+  group_by(date) %>%
+  summarize(total_steps = sum(steps, na.rm = T))
+
+# Plot histogram
+hist(activity_sum_steps_imputed$total_steps, main="Total number of steps taken each day (post imputing)", 
+     xlab="Total steps per day", col = 'dark green')
+
+```
+
+## 8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r, warning=FALSE, message= FALSE}
+
+# Map day name for date
+activity_data$days=tolower(weekdays(activity_data$date))
+
+# head(activity_data)
+# unique(activity_data$days)
+
+# Assign days to weekend or weekday
+activity_data$category <- ifelse(grepl("saturday|sunday", activity_data$days),"weekend","weekday")
+
+# Find average number of steps on weekend or weekday in the intervals
+activity_mean_steps_days <- 
+  activity_data %>%
+  group_by(interval, category) %>%
+  summarize(mean_steps = mean(steps, na.rm = T))
+
+
+# Plot average steps and interval as per day category
+
+ggplot(aes(x=interval,y=mean_steps),data=activity_mean_steps_days)+geom_line(color = "dark blue", size = 1.0)+facet_wrap(~activity_mean_steps_days$category)
+
+```
+
